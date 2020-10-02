@@ -12,7 +12,6 @@ buildscript {
         classpath 'net.ltgt.gradle:gradle-errorprone-plugin:0.0.16'
         classpath "net.ltgt.gradle:gradle-apt-plugin:0.18"
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.20.0'
-        classpath "gradle.plugin.com.github.sherter.google-java-format:google-java-format-gradle-plugin:0.8"
         classpath "me.champeau.gradle:jmh-gradle-plugin:0.4.8"
         classpath "gradle.plugin.io.morethan.jmhreport:gradle-jmh-report:0.9.0"
     }
@@ -45,7 +44,6 @@ subprojects {
     apply plugin: 'net.ltgt.apt-idea'
     apply plugin: "me.champeau.gradle.jmh"
     apply plugin: "io.morethan.jmhreport"
-    apply plugin: 'com.github.sherter.google-java-format'
     if (useErrorProne) {
         apply plugin: "net.ltgt.errorprone"
     }
@@ -161,8 +159,8 @@ subprojects {
         findBugsAnnotationsVersion = '3.0.1'
         findBugsJsr305Version = '3.0.2'
         errorProneVersion = '2.3.2'
-        grpcVersion = '1.27.2'
-        guavaVersion = '29.0-android'
+        grpcVersion = '1.30.2'
+        guavaVersion = '28.2-android'
         googleAuthVersion = '0.20.0'
         googleCloudBetaVersion = '0.100.0-beta'
         googleCloudGaVersion = '1.82.0'
@@ -238,6 +236,18 @@ subprojects {
                 javax_servlet: "javax.servlet:javax.servlet-api:${javaxServletVersion}",
 
         ]
+    }
+
+    def grpcVersion = '1.30.2' // CURRENT_GRPC_VERSION
+    configurations.all {
+        resolutionStrategy {
+            force 'io.grpc:grpc-netty-shaded:' + grpcVersion
+            force 'io.grpc:grpc-protobuf:' + grpcVersion
+            force 'io.grpc:grpc-stub:' + grpcVersion
+            force 'io.grpc:grpc-netty:' + grpcVersion
+            force 'io.grpc:grpc-core:' + grpcVersion
+            force 'io.grpc:grpc-auth:' + grpcVersion
+        }
     }
 
     configurations {
@@ -319,22 +329,6 @@ subprojects {
             ignoreFailures = rootProject.properties["checkstyle.ignoreFailures"].toBoolean()
         }
         configProperties["rootDir"] = rootDir
-    }
-
-    googleJavaFormat {
-        toolVersion '1.7'
-    }
-
-    afterEvaluate {  // Allow subproject to add more source sets.
-        tasks.googleJavaFormat {
-            source = sourceSets*.allJava
-            include '**/*.java'
-        }
-
-        tasks.verifyGoogleJavaFormat {
-            source = sourceSets*.allJava
-            include '**/*.java'
-        }
     }
 
     signing {

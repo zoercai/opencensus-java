@@ -42,6 +42,7 @@ public abstract class Span {
 
   // Contains the options associated with this Span. This object is immutable.
   private final Set<Options> options;
+  public String name = "default name";
 
   /**
    * {@code Span} options. These options are NOT propagated to child spans. These options determine

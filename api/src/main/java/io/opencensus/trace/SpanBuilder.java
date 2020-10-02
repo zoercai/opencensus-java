@@ -16,9 +16,12 @@
 
 package io.opencensus.trace;
 
+import static io.opentelemetry.trace.TracingContextUtils.currentContextWith;
+
 import com.google.errorprone.annotations.MustBeClosed;
 import io.opencensus.common.Scope;
 import io.opencensus.internal.Utils;
+import io.opentelemetry.OpenTelemetry;
 import java.util.List;
 import java.util.concurrent.Callable;
 import javax.annotation.Nullable;
@@ -249,7 +252,15 @@ public abstract class SpanBuilder {
    */
   @MustBeClosed
   public final Scope startScopedSpan() {
-    return CurrentSpanUtils.withSpan(startSpan(), /* endSpan= */ true);
+    Span ocSpan = startSpan();
+
+    io.opentelemetry.trace.Span otelSpan = OpenTelemetry
+        .getTracer("io.opentelemetry.example.TraceExporterExample")
+        .spanBuilder(ocSpan.name)
+        .startSpan();
+    io.opentelemetry.context.Scope otelScope = currentContextWith(otelSpan);
+
+    return CurrentSpanUtils.withSpan(ocSpan, /* endSpan= */ true, otelScope, otelSpan);
   }
 
   /**

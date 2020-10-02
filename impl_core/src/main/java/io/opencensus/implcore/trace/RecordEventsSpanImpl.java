@@ -67,7 +67,7 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
   // Handler called when the span starts and ends.
   private final StartEndHandler startEndHandler;
   // The displayed name of the span.
-  private final String name;
+  public final String name;
   // The kind of the span.
   @Nullable private final Kind kind;
   // The clock used to get the time.

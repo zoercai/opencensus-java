@@ -26,6 +26,8 @@ General guidelines on imports:
   <allow pkg="java"/>
   <allow pkg="javax"/>
   <allow class="io.grpc.Context"/>
+  <allow pkg="io.opentelemetry"/>
+  <allow pkg="io.opentelemetry.trace"/>
   <subpackage name="common">
     <allow pkg="io.opencensus.common"/>
   </subpackage>
@@ -287,6 +289,8 @@ General guidelines on imports:
     <allow pkg="io.opencensus.stats"/>
     <allow pkg="io.opencensus.tags"/>
     <allow pkg="io.opencensus.trace"/>
+    <allow pkg="io.opentelemetry"/>
+    <allow pkg="io.opentelemetry.trace"/>
   </subpackage>
   <subpackage name="impl">
     <allow pkg="com.lmax.disruptor"/>

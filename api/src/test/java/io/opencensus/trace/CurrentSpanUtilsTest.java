@@ -87,7 +87,7 @@ public class CurrentSpanUtilsTest {
   @Test
   public void withSpan_CloseDetaches() {
     assertThat(CurrentSpanUtils.getCurrentSpan()).isEqualTo(BlankSpan.INSTANCE);
-    Scope ws = CurrentSpanUtils.withSpan(span, false);
+    Scope ws = CurrentSpanUtils.withSpan(span, false, null, null);
     try {
       assertThat(CurrentSpanUtils.getCurrentSpan()).isSameInstanceAs(span);
     } finally {
@@ -100,7 +100,7 @@ public class CurrentSpanUtilsTest {
   @Test
   public void withSpan_CloseDetachesAndEndsSpan() {
     assertThat(CurrentSpanUtils.getCurrentSpan()).isEqualTo(BlankSpan.INSTANCE);
-    Scope ss = CurrentSpanUtils.withSpan(span, true);
+    Scope ss = CurrentSpanUtils.withSpan(span, true, null, null);
     try {
       assertThat(CurrentSpanUtils.getCurrentSpan()).isSameInstanceAs(span);
     } finally {

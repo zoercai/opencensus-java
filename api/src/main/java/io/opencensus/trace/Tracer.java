@@ -16,10 +16,13 @@
 
 package io.opencensus.trace;
 
+import static io.opentelemetry.trace.TracingContextUtils.currentContextWith;
+
 import com.google.errorprone.annotations.MustBeClosed;
 import io.opencensus.common.Scope;
 import io.opencensus.internal.Utils;
 import io.opencensus.trace.SpanBuilder.NoopSpanBuilder;
+import io.opentelemetry.OpenTelemetry;
 import java.util.concurrent.Callable;
 import javax.annotation.Nullable;
 
@@ -151,7 +154,14 @@ public abstract class Tracer {
    */
   @MustBeClosed
   public final Scope withSpan(Span span) {
-    return CurrentSpanUtils.withSpan(Utils.checkNotNull(span, "span"), /* endSpan= */ false);
+    io.opentelemetry.trace.Span otelSpan = OpenTelemetry
+        .getTracer("io.opentelemetry.example.TraceExporterExample")
+        .spanBuilder(span.name)
+        .startSpan();
+    io.opentelemetry.context.Scope scope = currentContextWith(otelSpan);
+
+    return CurrentSpanUtils
+        .withSpan(Utils.checkNotNull(span, "span"), /* endSpan= */ false, scope, otelSpan);
   }
 
   /**

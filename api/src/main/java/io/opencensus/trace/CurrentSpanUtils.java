@@ -45,11 +45,14 @@ final class CurrentSpanUtils {
    *
    * @param span The {@code Span} to be set to the current context.
    * @param endSpan if {@code true} the returned {@code Scope} will close the {@code Span}.
+   * @param scope opentelemetry scope
+   * @param otelSpan
    * @return An object that defines a scope where the given {@code Span} is set to the current
    *     context.
    */
-  static Scope withSpan(Span span, boolean endSpan) {
-    return new ScopeInSpan(span, endSpan);
+  static Scope withSpan(Span span, boolean endSpan, io.opentelemetry.context.Scope scope,
+      io.opentelemetry.trace.Span otelSpan) {
+    return new ScopeInSpan(span, endSpan, scope, otelSpan);
   }
 
   /**
@@ -79,23 +82,35 @@ final class CurrentSpanUtils {
   // Defines an arbitrary scope of code as a traceable operation. Supports try-with-resources idiom.
   private static final class ScopeInSpan implements Scope {
     private final Context origContext;
+    private final io.opentelemetry.context.Scope otelScope;
     private final Span span;
+    private final io.opentelemetry.trace.Span otelSpan;
     private final boolean endSpan;
 
     /**
      * Constructs a new {@link ScopeInSpan}.
-     *
-     * @param span is the {@code Span} to be added to the current {@code io.grpc.Context}.
+     *  @param span is the {@code Span} to be added to the current {@code io.grpc.Context}.
+     * @param scope otel scope
+     * @param otelSpan otel span
      */
-    private ScopeInSpan(Span span, boolean endSpan) {
+    private ScopeInSpan(Span span, boolean endSpan, io.opentelemetry.context.Scope scope,
+        io.opentelemetry.trace.Span otelSpan) {
       this.span = span;
+      this.otelScope = scope;
       this.endSpan = endSpan;
+      this.otelSpan = otelSpan;
       origContext = ContextUtils.withValue(Context.current(), span).attach();
     }
 
     @Override
     public void close() {
       Context.current().detach(origContext);
+      if (otelScope != null) {
+        otelScope.close();
+      }
+      if (otelSpan != null) {
+        otelSpan.end();
+      }
       if (endSpan) {
         span.end();
       }
