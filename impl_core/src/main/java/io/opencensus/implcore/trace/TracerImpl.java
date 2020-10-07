@@ -16,13 +16,20 @@
 
 package io.opencensus.implcore.trace;
 
+import com.google.errorprone.annotations.MustBeClosed;
 import io.opencensus.common.Clock;
+import io.opencensus.common.Scope;
+import io.opencensus.implcore.trace.SpanBuilderImpl.ScopeInSpanWithOtelSpan;
 import io.opencensus.implcore.trace.internal.RandomHandler;
+import io.opencensus.internal.Utils;
+import io.opencensus.trace.CurrentSpanUtils;
 import io.opencensus.trace.Span;
 import io.opencensus.trace.SpanBuilder;
 import io.opencensus.trace.SpanContext;
 import io.opencensus.trace.Tracer;
 import io.opencensus.trace.config.TraceConfig;
+import io.opencensus.trace.export.SpanData;
+import io.opentelemetry.OpenTelemetry;
 import javax.annotation.Nullable;
 
 /** Implementation of the {@link Tracer}. */
@@ -36,6 +43,16 @@ public final class TracerImpl extends Tracer {
       TraceConfig traceConfig) {
     spanBuilderOptions =
         new SpanBuilderImpl.Options(randomHandler, startEndHandler, clock, traceConfig);
+  }
+
+  @MustBeClosed
+  @Override
+  public Scope withSpan(Span span) {
+    Utils.checkNotNull(span, "span");
+    if (span instanceof RecordEventsSpanImpl) {
+      return new ScopeInSpanWithOtelSpan(span, false);
+    }
+    return CurrentSpanUtils.withSpan(Utils.checkNotNull(span, "span"), /* endSpan= */ false);
   }
 
   @Override

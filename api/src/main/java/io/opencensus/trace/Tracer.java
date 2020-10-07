@@ -150,7 +150,7 @@ public abstract class Tracer {
    * @since 0.5
    */
   @MustBeClosed
-  public final Scope withSpan(Span span) {
+  public Scope withSpan(Span span) {
     return CurrentSpanUtils.withSpan(Utils.checkNotNull(span, "span"), /* endSpan= */ false);
   }
 

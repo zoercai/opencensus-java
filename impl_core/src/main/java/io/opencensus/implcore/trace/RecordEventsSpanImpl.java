@@ -23,6 +23,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.EvictingQueue;
 import io.opencensus.common.Clock;
+import io.opencensus.common.Function;
 import io.opencensus.implcore.internal.TimestampConverter;
 import io.opencensus.implcore.trace.internal.ConcurrentIntrusiveList.Element;
 import io.opencensus.trace.Annotation;
@@ -37,12 +38,16 @@ import io.opencensus.trace.Tracer;
 import io.opencensus.trace.config.TraceParams;
 import io.opencensus.trace.export.SpanData;
 import io.opencensus.trace.export.SpanData.TimedEvent;
+import io.opentelemetry.OpenTelemetry;
+import io.opentelemetry.common.Attributes;
+import io.opentelemetry.trace.Span.Builder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
@@ -62,6 +67,8 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
   @Nullable private final SpanId parentSpanId;
   // True if the parent is on a different process.
   @Nullable private final Boolean hasRemoteParent;
+  // OpenTelemetry span
+  @Nullable private io.opentelemetry.trace.Span otelSpan;
   // Active trace params when the Span was created.
   private final TraceParams traceParams;
   // Handler called when the span starts and ends.
@@ -234,6 +241,11 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
     return timestampConverter;
   }
 
+  @Nullable
+  public io.opentelemetry.trace.Span getOtelSpan() {
+    return otelSpan;
+  }
+
   /**
    * Returns an immutable representation of all the data from this {@code Span}.
    *
@@ -301,30 +313,50 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
   public void addAnnotation(String description, Map<String, AttributeValue> attributes) {
     Preconditions.checkNotNull(description, "description");
     Preconditions.checkNotNull(attributes, "attribute");
+    long nanoTime;
     synchronized (this) {
       if (hasBeenEnded) {
         logger.log(Level.FINE, "Calling addAnnotation() on an ended Span.");
         return;
       }
+      nanoTime = clock.nowNanos();
       getInitializedAnnotations()
           .addEvent(
               new EventWithNanoTime<Annotation>(
-                  clock.nowNanos(),
+                  nanoTime,
                   Annotation.fromDescriptionAndAttributes(description, attributes)));
+    }
+    if (otelSpan != null) {
+      otelSpan.addEvent(description, mapAttributes(attributes), nanoTime);
     }
   }
 
   @Override
   public void addAnnotation(Annotation annotation) {
     Preconditions.checkNotNull(annotation, "annotation");
+    long nanoTime;
     synchronized (this) {
       if (hasBeenEnded) {
         logger.log(Level.FINE, "Calling addAnnotation() on an ended Span.");
         return;
       }
+      nanoTime = clock.nowNanos();
       getInitializedAnnotations()
-          .addEvent(new EventWithNanoTime<Annotation>(clock.nowNanos(), annotation));
+          .addEvent(new EventWithNanoTime<Annotation>(nanoTime, annotation));
     }
+    if (otelSpan != null) {
+      otelSpan.addEvent(annotation.getDescription(), mapAttributes(annotation.getAttributes()), nanoTime);
+    }
+  }
+
+  private Attributes mapAttributes(Map<String, AttributeValue> attributes) {
+    Attributes.Builder builder = Attributes.newBuilder();
+    for (Entry<String, AttributeValue> attribute : attributes.entrySet()) {
+      builder.setAttribute(attribute.getKey(),
+          attribute.getValue().match(stringAttributeConverter, booleanAttributeConverter, longAttributeConverter,
+              doubleAttributeConverter, defaultAttributeConverter));
+    }
+    return builder.build();
   }
 
   @Override
@@ -354,6 +386,62 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
     }
   }
 
+  @GuardedBy("this")
+  private void generateOtelSpan() {
+    Builder builder = OpenTelemetry
+        .getTracer("io.opentelemetry.example.TraceExporterExample")
+        .spanBuilder(name)
+        .setStartTimestamp(startNanoTime);
+    if (attributes != null) {
+      for (Entry<String, AttributeValue> attribute : attributes.entrySet()) {
+        builder.setAttribute(attribute.getKey(),
+            attribute.getValue().match(stringAttributeConverter, booleanAttributeConverter, longAttributeConverter,
+                doubleAttributeConverter, defaultAttributeConverter));
+      }
+    }
+    this.otelSpan = builder.startSpan();
+  }
+
+  private static final Function<? super String, io.opentelemetry.common.AttributeValue> stringAttributeConverter =
+      new Function<String, io.opentelemetry.common.AttributeValue>() {
+        @Override
+        public io.opentelemetry.common.AttributeValue apply(final String value) {
+          return io.opentelemetry.common.AttributeValue.stringAttributeValue(value);
+        }
+      };
+
+  private static final Function<? super Boolean, io.opentelemetry.common.AttributeValue> booleanAttributeConverter =
+      new Function<Boolean, io.opentelemetry.common.AttributeValue>() {
+        @Override
+        public io.opentelemetry.common.AttributeValue apply(final Boolean value) {
+          return io.opentelemetry.common.AttributeValue.booleanAttributeValue(value);
+        }
+      };
+
+  private static final Function<? super Long, io.opentelemetry.common.AttributeValue> longAttributeConverter =
+      new Function<Long, io.opentelemetry.common.AttributeValue>() {
+        @Override
+        public io.opentelemetry.common.AttributeValue apply(final Long value) {
+          return io.opentelemetry.common.AttributeValue.longAttributeValue(value);
+        }
+      };
+
+  private static final Function<? super Double, io.opentelemetry.common.AttributeValue> doubleAttributeConverter =
+      new Function<Double, io.opentelemetry.common.AttributeValue>() {
+        @Override
+        public io.opentelemetry.common.AttributeValue apply(final Double value) {
+          return io.opentelemetry.common.AttributeValue.doubleAttributeValue(value);
+        }
+      };
+
+  private static final Function<Object, io.opentelemetry.common.AttributeValue> defaultAttributeConverter =
+      new Function<Object, io.opentelemetry.common.AttributeValue>() {
+        @Override
+        public io.opentelemetry.common.AttributeValue apply(final Object value) {
+          return io.opentelemetry.common.AttributeValue.stringAttributeValue(value.toString());
+        }
+      };
+
   @Override
   public void setStatus(Status status) {
     Preconditions.checkNotNull(status, "status");
@@ -369,6 +457,7 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
   @Override
   public void end(EndSpanOptions options) {
     Preconditions.checkNotNull(options, "options");
+    long endTime;
     synchronized (this) {
       if (hasBeenEnded) {
         logger.log(Level.FINE, "Calling end() on an ended Span.");
@@ -378,10 +467,13 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
         status = options.getStatus();
       }
       sampleToLocalSpanStore = options.getSampleToLocalSpanStore();
-      endNanoTime = clock.nowNanos();
+      endTime = endNanoTime = clock.nowNanos();
       hasBeenEnded = true;
     }
     startEndHandler.onEnd(this);
+    if (otelSpan != null) {
+      otelSpan.end(io.opentelemetry.trace.EndSpanOptions.builder().setEndTimestamp(endTime).build());
+    }
   }
 
   void addChild() {
@@ -585,6 +677,7 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
     this.timestampConverter =
         timestampConverter != null ? timestampConverter : TimestampConverter.now(clock);
     startNanoTime = clock.nowNanos();
+    this.generateOtelSpan();
   }
 
   @SuppressWarnings("NoFinalizer")

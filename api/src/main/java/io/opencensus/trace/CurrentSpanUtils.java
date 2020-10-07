@@ -23,7 +23,7 @@ import java.util.concurrent.Callable;
 import javax.annotation.Nullable;
 
 /** Util methods/functionality to interact with the {@link Span} in the {@link io.grpc.Context}. */
-final class CurrentSpanUtils {
+public class CurrentSpanUtils {
   // No instance of this class.
   private CurrentSpanUtils() {}
 
@@ -33,7 +33,7 @@ final class CurrentSpanUtils {
    * @return The {@code Span} from the current context.
    */
   @Nullable
-  static Span getCurrentSpan() {
+  public static Span getCurrentSpan() {
     return ContextUtils.getValue(Context.current());
   }
 
@@ -48,7 +48,7 @@ final class CurrentSpanUtils {
    * @return An object that defines a scope where the given {@code Span} is set to the current
    *     context.
    */
-  static Scope withSpan(Span span, boolean endSpan) {
+  public static Scope withSpan(Span span, boolean endSpan) {
     return new ScopeInSpan(span, endSpan);
   }
 
@@ -60,7 +60,7 @@ final class CurrentSpanUtils {
    * @param runnable the {@code Runnable} to run in the {@code Span}.
    * @return the wrapped {@code Runnable}.
    */
-  static Runnable withSpan(Span span, boolean endSpan, Runnable runnable) {
+  public static Runnable withSpan(Span span, boolean endSpan, Runnable runnable) {
     return new RunnableInSpan(span, runnable, endSpan);
   }
 
@@ -72,7 +72,7 @@ final class CurrentSpanUtils {
    * @param callable the {@code Callable} to run in the {@code Span}.
    * @return the wrapped {@code Callable}.
    */
-  static <C> Callable<C> withSpan(Span span, boolean endSpan, Callable<C> callable) {
+  public static <C> Callable<C> withSpan(Span span, boolean endSpan, Callable<C> callable) {
     return new CallableInSpan<C>(span, callable, endSpan);
   }
 

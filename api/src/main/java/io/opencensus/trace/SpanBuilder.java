@@ -248,7 +248,7 @@ public abstract class SpanBuilder {
    * @since 0.5
    */
   @MustBeClosed
-  public final Scope startScopedSpan() {
+  public Scope startScopedSpan() {
     return CurrentSpanUtils.withSpan(startSpan(), /* endSpan= */ true);
   }
 

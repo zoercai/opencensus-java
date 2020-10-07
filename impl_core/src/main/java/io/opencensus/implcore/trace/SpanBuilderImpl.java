@@ -17,10 +17,15 @@
 package io.opencensus.implcore.trace;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.opentelemetry.trace.TracingContextUtils.currentContextWith;
 
+import com.google.errorprone.annotations.MustBeClosed;
+import io.grpc.Context;
 import io.opencensus.common.Clock;
+import io.opencensus.common.Scope;
 import io.opencensus.implcore.internal.TimestampConverter;
 import io.opencensus.implcore.trace.internal.RandomHandler;
+import io.opencensus.trace.CurrentSpanUtils;
 import io.opencensus.trace.Link;
 import io.opencensus.trace.Link.Type;
 import io.opencensus.trace.Sampler;
@@ -34,6 +39,7 @@ import io.opencensus.trace.TraceOptions;
 import io.opencensus.trace.Tracestate;
 import io.opencensus.trace.config.TraceConfig;
 import io.opencensus.trace.config.TraceParams;
+import io.opencensus.trace.unsafe.ContextUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -211,6 +217,48 @@ final class SpanBuilderImpl extends SpanBuilder {
       }
       return startSpanInternal(
           parentContext, hasRemoteParent, name, sampler, parentLinks, recordEvents, kind, parent);
+    }
+  }
+
+  @MustBeClosed
+  @Override
+  public Scope startScopedSpan() {
+    Span ocSpan = startSpan();
+    if (ocSpan instanceof RecordEventsSpanImpl) {
+      return new ScopeInSpanWithOtelSpan(ocSpan, true);
+    }
+    return CurrentSpanUtils.withSpan(startSpan(), /* endSpan= */ true);
+  }
+
+  public static final class ScopeInSpanWithOtelSpan implements Scope {
+    private final Context origContext;
+    private final Span span;
+    private final boolean endSpan;
+    private io.opentelemetry.context.Scope otelScope;
+
+    /**
+     * Constructs a new {@link ScopeInSpanWithOtelSpan}.
+     *
+     * @param span is the {@code Span} to be added to the current {@code io.grpc.Context}.
+     */
+    public ScopeInSpanWithOtelSpan(Span span, boolean endSpan) {
+      this.span = span;
+      this.endSpan = endSpan;
+      if (span instanceof RecordEventsSpanImpl && ((RecordEventsSpanImpl) span).getOtelSpan() != null) {
+        this.otelScope = currentContextWith(((RecordEventsSpanImpl) span).getOtelSpan());
+      }
+      origContext = ContextUtils.withValue(Context.current(), span).attach();
+    }
+
+    @Override
+    public void close() {
+      Context.current().detach(origContext);
+      if (otelScope != null) {
+        otelScope.close();
+      }
+      if (endSpan) {
+        span.end();
+      }
     }
   }
 
