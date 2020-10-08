@@ -32,7 +32,7 @@ import org.junit.runners.JUnit4;
 public class TraceComponentImplBaseTest {
   private final TraceComponentImplBase traceComponentImplBase =
       new TraceComponentImplBase(
-          MillisClock.getInstance(), new SecureRandomHandler(), new SimpleEventQueue());
+          MillisClock.getInstance(), new SecureRandomHandler(), new SimpleEventQueue(), false);
 
   @Test
   public void implementationOfTracer() {

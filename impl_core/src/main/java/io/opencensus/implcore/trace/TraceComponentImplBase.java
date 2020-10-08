@@ -51,7 +51,7 @@ public final class TraceComponentImplBase {
    * @param randomHandler the random number generator for generating trace and span IDs.
    * @param eventQueue the queue implementation.
    */
-  public TraceComponentImplBase(Clock clock, RandomHandler randomHandler, EventQueue eventQueue) {
+  public TraceComponentImplBase(Clock clock, RandomHandler randomHandler, EventQueue eventQueue, boolean enableOtel) {
     this.clock = clock;
     // TODO(bdrutu): Add a config/argument for supportInProcessStores.
     if (eventQueue instanceof SimpleEventQueue) {
@@ -65,7 +65,7 @@ public final class TraceComponentImplBase {
             exportComponent.getRunningSpanStore(),
             exportComponent.getSampledSpanStore(),
             eventQueue);
-    tracer = new TracerImpl(randomHandler, startEndHandler, clock, traceConfig);
+    tracer = new TracerImpl(randomHandler, startEndHandler, clock, traceConfig, enableOtel);
   }
 
   public Tracer getTracer() {

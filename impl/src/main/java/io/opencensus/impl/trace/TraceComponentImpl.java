@@ -37,7 +37,8 @@ public final class TraceComponentImpl extends TraceComponent {
         new TraceComponentImplBase(
             MillisClock.getInstance(),
             new ThreadLocalRandomHandler(),
-            DisruptorEventQueue.getInstance());
+            DisruptorEventQueue.getInstance(),
+            false);
   }
 
   @Override

@@ -44,7 +44,7 @@ public class TracerImplTest {
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     tracer =
-        new TracerImpl(new SecureRandomHandler(), startEndHandler, TestClock.create(), traceConfig);
+        new TracerImpl(new SecureRandomHandler(), startEndHandler, TestClock.create(), traceConfig, false);
   }
 
   @Test

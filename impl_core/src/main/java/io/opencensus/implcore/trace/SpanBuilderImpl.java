@@ -24,6 +24,7 @@ import io.grpc.Context;
 import io.opencensus.common.Clock;
 import io.opencensus.common.Scope;
 import io.opencensus.implcore.internal.TimestampConverter;
+import io.opencensus.implcore.trace.RecordEventsSpanImpl.StartEndHandler;
 import io.opencensus.implcore.trace.internal.RandomHandler;
 import io.opencensus.trace.CurrentSpanUtils;
 import io.opencensus.trace.Link;
@@ -119,6 +120,7 @@ final class SpanBuilderImpl extends SpanBuilder {
               kind,
               parentSpanId,
               hasRemoteParent,
+              options.enableOtel,
               activeTraceParams,
               options.startEndHandler,
               timestampConverter,
@@ -224,7 +226,7 @@ final class SpanBuilderImpl extends SpanBuilder {
   @Override
   public Scope startScopedSpan() {
     Span ocSpan = startSpan();
-    if (ocSpan instanceof RecordEventsSpanImpl) {
+    if (options.enableOtel && ocSpan instanceof RecordEventsSpanImpl) {
       return new ScopeInSpanWithOtelSpan(ocSpan, true);
     }
     return CurrentSpanUtils.withSpan(startSpan(), /* endSpan= */ true);
@@ -244,7 +246,7 @@ final class SpanBuilderImpl extends SpanBuilder {
     public ScopeInSpanWithOtelSpan(Span span, boolean endSpan) {
       this.span = span;
       this.endSpan = endSpan;
-      if (span instanceof RecordEventsSpanImpl && ((RecordEventsSpanImpl) span).getOtelSpan() != null) {
+      if (((RecordEventsSpanImpl) span).getOtelSpan() != null) {
         this.otelScope = currentContextWith(((RecordEventsSpanImpl) span).getOtelSpan());
       }
       origContext = ContextUtils.withValue(Context.current(), span).attach();
@@ -257,6 +259,9 @@ final class SpanBuilderImpl extends SpanBuilder {
         otelScope.close();
       }
       if (endSpan) {
+        if (((RecordEventsSpanImpl) span).getOtelSpan() != null) {
+          ((RecordEventsSpanImpl) span).getOtelSpan().end();
+        }
         span.end();
       }
     }
@@ -267,16 +272,19 @@ final class SpanBuilderImpl extends SpanBuilder {
     private final RecordEventsSpanImpl.StartEndHandler startEndHandler;
     private final Clock clock;
     private final TraceConfig traceConfig;
+    final boolean enableOtel;
 
     Options(
         RandomHandler randomHandler,
-        RecordEventsSpanImpl.StartEndHandler startEndHandler,
+        StartEndHandler startEndHandler,
         Clock clock,
-        TraceConfig traceConfig) {
+        TraceConfig traceConfig,
+        boolean enableOtel) {
       this.randomHandler = checkNotNull(randomHandler, "randomHandler");
       this.startEndHandler = checkNotNull(startEndHandler, "startEndHandler");
       this.clock = checkNotNull(clock, "clock");
       this.traceConfig = checkNotNull(traceConfig, "traceConfig");
+      this.enableOtel = enableOtel;
     }
   }
 

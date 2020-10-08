@@ -58,7 +58,7 @@ public class SpanBuilderImplTest {
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     spanBuilderOptions =
-        new SpanBuilderImpl.Options(randomHandler, startEndHandler, testClock, traceConfig);
+        new SpanBuilderImpl.Options(randomHandler, startEndHandler, testClock, traceConfig, false);
     when(traceConfig.getActiveTraceParams()).thenReturn(alwaysSampleTraceParams);
   }
 

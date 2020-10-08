@@ -144,6 +144,7 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
       @Nullable Kind kind,
       @Nullable SpanId parentSpanId,
       @Nullable Boolean hasRemoteParent,
+      boolean generateOtelSpan,
       TraceParams traceParams,
       StartEndHandler startEndHandler,
       @Nullable TimestampConverter timestampConverter,
@@ -155,6 +156,7 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
             kind,
             parentSpanId,
             hasRemoteParent,
+            generateOtelSpan,
             traceParams,
             startEndHandler,
             timestampConverter,
@@ -325,9 +327,9 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
               new EventWithNanoTime<Annotation>(
                   nanoTime,
                   Annotation.fromDescriptionAndAttributes(description, attributes)));
-    }
-    if (otelSpan != null) {
-      otelSpan.addEvent(description, mapAttributes(attributes), nanoTime);
+      if (otelSpan != null) {
+        otelSpan.addEvent(description, mapAttributes(attributes), nanoTime);
+      }
     }
   }
 
@@ -343,9 +345,9 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
       nanoTime = clock.nowNanos();
       getInitializedAnnotations()
           .addEvent(new EventWithNanoTime<Annotation>(nanoTime, annotation));
-    }
-    if (otelSpan != null) {
-      otelSpan.addEvent(annotation.getDescription(), mapAttributes(annotation.getAttributes()), nanoTime);
+      if (otelSpan != null) {
+        otelSpan.addEvent(annotation.getDescription(), mapAttributes(annotation.getAttributes()), nanoTime);
+      }
     }
   }
 
@@ -470,10 +472,10 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
       endTime = endNanoTime = clock.nowNanos();
       hasBeenEnded = true;
     }
-    startEndHandler.onEnd(this);
     if (otelSpan != null) {
       otelSpan.end(io.opentelemetry.trace.EndSpanOptions.builder().setEndTimestamp(endTime).build());
     }
+    startEndHandler.onEnd(this);
   }
 
   void addChild() {
@@ -659,6 +661,7 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
       @Nullable Kind kind,
       @Nullable SpanId parentSpanId,
       @Nullable Boolean hasRemoteParent,
+      boolean generateOtelSpan,
       TraceParams traceParams,
       StartEndHandler startEndHandler,
       @Nullable TimestampConverter timestampConverter,
@@ -677,7 +680,9 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
     this.timestampConverter =
         timestampConverter != null ? timestampConverter : TimestampConverter.now(clock);
     startNanoTime = clock.nowNanos();
-    this.generateOtelSpan();
+    if (generateOtelSpan) {
+      this.generateOtelSpan();
+    }
   }
 
   @SuppressWarnings("NoFinalizer")

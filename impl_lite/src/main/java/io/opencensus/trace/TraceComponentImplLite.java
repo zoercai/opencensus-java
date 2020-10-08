@@ -36,7 +36,7 @@ public final class TraceComponentImplLite extends TraceComponent {
   public TraceComponentImplLite() {
     traceComponentImplBase =
         new TraceComponentImplBase(
-            MillisClock.getInstance(), new SecureRandomHandler(), new SimpleEventQueue());
+            MillisClock.getInstance(), new SecureRandomHandler(), new SimpleEventQueue(), false);
   }
 
   @Override
