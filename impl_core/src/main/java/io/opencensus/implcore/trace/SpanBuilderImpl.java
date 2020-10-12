@@ -259,9 +259,6 @@ final class SpanBuilderImpl extends SpanBuilder {
         otelScope.close();
       }
       if (endSpan) {
-        if (((RecordEventsSpanImpl) span).getOtelSpan() != null) {
-          ((RecordEventsSpanImpl) span).getOtelSpan().end();
-        }
         span.end();
       }
     }

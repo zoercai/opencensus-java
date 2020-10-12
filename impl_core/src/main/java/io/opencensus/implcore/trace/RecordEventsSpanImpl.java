@@ -474,8 +474,9 @@ public final class RecordEventsSpanImpl extends Span implements Element<RecordEv
     }
     if (otelSpan != null) {
       otelSpan.end(io.opentelemetry.trace.EndSpanOptions.builder().setEndTimestamp(endTime).build());
+    } else {
+      startEndHandler.onEnd(this);
     }
-    startEndHandler.onEnd(this);
   }
 
   void addChild() {

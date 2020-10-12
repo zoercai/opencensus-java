@@ -23,7 +23,7 @@ import java.util.concurrent.Callable;
 import javax.annotation.Nullable;
 
 /** Util methods/functionality to interact with the {@link Span} in the {@link io.grpc.Context}. */
-public class CurrentSpanUtils {
+public final class CurrentSpanUtils {
   // No instance of this class.
   private CurrentSpanUtils() {}
 
